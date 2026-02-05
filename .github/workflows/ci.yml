@@ -83,3 +83,5 @@ jobs:
       - name: Tear down
         if: always()
         run: docker compose down
+
+#Bonus stuff can go below here
