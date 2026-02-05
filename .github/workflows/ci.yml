@@ -33,7 +33,7 @@ jobs:
           cache: maven
 
       - name: Build services
-        run: mvn -f ProductService/pom.xml clean package mvn -f OrderService/pom.xml clean package
+        run: mvn clean package
 
       - name: Run unit tests
         run: mvn test
