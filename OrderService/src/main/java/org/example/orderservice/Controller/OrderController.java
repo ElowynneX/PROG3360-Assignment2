@@ -4,6 +4,7 @@ import org.example.orderservice.Client.ProductClient;
 import org.example.orderservice.Client.ProductDto;
 import org.example.orderservice.Model.Order;
 import org.example.orderservice.Repository.OrderRepository;
+import org.example.orderservice.Service.FeatureFlagService;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -13,10 +14,12 @@ import java.util.List;
 public class OrderController {
     private final OrderRepository _orderRepository;
     private final ProductClient _productClient;
+    private final FeatureFlagService _featureFlagService;
 
-    public OrderController(OrderRepository orderRepository, ProductClient productClient) {
+    public OrderController(OrderRepository orderRepository, ProductClient productClient, FeatureFlagService featureFlagService) {
         _orderRepository = orderRepository;
         _productClient = productClient;
+        _featureFlagService = featureFlagService;
     }
 
     @GetMapping()
@@ -37,9 +40,28 @@ public class OrderController {
             throw new RuntimeException("Insufficient product quantity");
         }
 
-        order.setTotalPrice(product.price() * order.getQuantity());
+        double totalPrice = product.price() * order.getQuantity();
+
+        // Bulk Order Discount (15% if quantity > 5)
+        if (_featureFlagService.isBulkOrderDiscountEnabled() && order.getQuantity() > 5) {
+            totalPrice = totalPrice * 0.85;
+        }
+
+        order.setTotalPrice(totalPrice);
         order.setStatus("ORDER CREATED");
 
-        return _orderRepository.save(order);
+        Order savedOrder = _orderRepository.save(order);
+
+        // Order Notifications
+        if (_featureFlagService.isOrderNotificationsEnabled()) {
+            System.out.println("Order Notification: Order ID "
+                    + savedOrder.getId()
+                    + " | Product ID "
+                    + savedOrder.getProductId()
+                    + " | Total Price "
+                    + savedOrder.getTotalPrice());
+        }
+
+        return savedOrder;
     }
 }
