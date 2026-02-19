@@ -13,7 +13,9 @@ public class FeatureFlagService {
 
     public boolean isOrderNotificationsEnabled() {
         try {
-            return unleash.isEnabled("order-notifications");
+            boolean enabled = unleash.isEnabled("order-notifications");
+            System.out.println("[DEBUG] order-notifications enabled? " + enabled);
+            return enabled;
         } catch (Exception e) {
             System.out.println("Unleash unavailable, defaulting order-notifications to false");
             return false;
@@ -22,7 +24,9 @@ public class FeatureFlagService {
 
     public boolean isBulkOrderDiscountEnabled() {
         try {
-            return unleash.isEnabled("bulk-order-discount");
+            boolean enabled = unleash.isEnabled("bulk-order-discount");
+            System.out.println("[DEBUG] bulk-order-discount enabled? " + enabled);
+            return enabled;
         } catch (Exception e) {
             System.out.println("Unleash unavailable, defaulting bulk-order-discount to false");
             return false;

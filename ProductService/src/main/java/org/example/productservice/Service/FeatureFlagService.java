@@ -17,7 +17,9 @@ public class FeatureFlagService {
 
     public boolean isPremiumPricingEnabled() {
         try {
-            return unleash.isEnabled("premium-pricing");
+            boolean enabled = unleash.isEnabled("premium-pricing");
+            System.out.println("[DEBUG] premium-pricing enabled? " + enabled);
+            return enabled;
         } catch (Exception e) {
             System.out.println("Unleash unavailable, defaulting premium-pricing to false");
             return false;

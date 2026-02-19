@@ -1,7 +1,6 @@
 version: "3.9"
 
 services:
-
   postgres:
     image: postgres:15
     container_name: unleash-postgres
@@ -20,12 +19,12 @@ services:
       retries: 10
 
   unleash-server:
-    image: unleashorg/unleash-server
+    image: unleashorg/unleash-server:latest
     container_name: unleash-server
     ports:
       - "4242:4242"
     environment:
-      DATABASE_URL: postgres://unleash:unleash@postgres:5432/unleash
+      DATABASE_URL: postgres://unleash:unleash@unleash-postgres:5432/unleash
       DATABASE_SSL: "false"
       UNLEASH_ADMIN_USERNAME: admin
       UNLEASH_ADMIN_PASSWORD: admin
@@ -36,24 +35,26 @@ services:
     networks:
       - spring-net
     healthcheck:
-      test: [ "CMD", "wget", "-q", "--spider", "http://localhost:4242/health" ]
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:4242/health"]
       interval: 10s
       timeout: 5s
       retries: 5
 
-  unleash-init:
-    image: curlimages/curl:8.3.0
-    container_name: unleash-init
+  unleash-init-flags:
+    image: alpine:3.18
+    container_name: unleash-init-flags
     depends_on:
       unleash-server:
         condition: service_healthy
-    environment:
-      ADMIN_TOKEN: "*:development.207c60daac5adad5af6a049179ac7b4cc4df262257702fc3333ef4d6"
     networks:
       - spring-net
+    environment:
+      UNLEASH_ADMIN_TOKEN: "user:39f8acf30da969d13c3c1f3c1e4e6c768b40391085775cb7aba48ee8"
+      UNLEASH_URL: "http://unleash-server:4242/api"
+    entrypoint: [ "sh", "-c", "apk add --no-cache curl jq bash && /app/init-flags.sh" ]
     volumes:
-      - ./Scripts:/scripts
-    entrypoint: ["/bin/sh", "-c", "/scripts/init-flags.sh"]
+      - ./Scripts/init-flags.sh:/app/init-flags.sh:ro
+    restart: "no"
 
   product-service:
     build:
@@ -65,11 +66,14 @@ services:
       unleash-server:
         condition: service_healthy
     environment:
-      UNLEASH_API_TOKEN: "*:development.207c60daac5adad5af6a049179ac7b4cc4df262257702fc3333ef4d6"
+      UNLEASH_API_URL: "http://unleash-server:4242/api"
+      UNLEASH_API_TOKEN: "default:development.c608b3960e8734fd3972c9227e7c82e3ef0fb24a4562cb28bff9e595"
+      UNLEASH_ENVIRONMENT: "development"
+      UNLEASH_PROJECT: "default"
     networks:
       - spring-net
     healthcheck:
-      test: [ "CMD-SHELL", "curl -f http://localhost:8081/actuator/health || exit 1" ]
+      test: ["CMD-SHELL", "curl -f http://localhost:8081/actuator/health || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 10
@@ -86,11 +90,14 @@ services:
       product-service:
         condition: service_started
     environment:
-      UNLEASH_API_TOKEN: "*:development.207c60daac5adad5af6a049179ac7b4cc4df262257702fc3333ef4d6"
+      UNLEASH_API_URL: "http://unleash-server:4242/api"
+      UNLEASH_API_TOKEN: "default:development.c608b3960e8734fd3972c9227e7c82e3ef0fb24a4562cb28bff9e595"
+      UNLEASH_ENVIRONMENT: "development"
+      UNLEASH_PROJECT: "default"
     networks:
       - spring-net
     healthcheck:
-      test: [ "CMD-SHELL", "curl -f http://localhost:8082/actuator/health || exit 1" ]
+      test: ["CMD-SHELL", "curl -f http://localhost:8082/actuator/health || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 10
