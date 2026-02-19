@@ -7,6 +7,7 @@ set -e
 UNLEASH_URL="${UNLEASH_URL:-http://unleash-server:4242/api}"
 ADMIN_USER="${UNLEASH_ADMIN_USER:-admin}"
 ADMIN_PASSWORD="${UNLEASH_ADMIN_PASSWORD:-unleash4all}"
+ADMIN_TOKEN="${UNLEASH_ADMIN_TOKEN:-}"
 PROJECT="${UNLEASH_PROJECT:-default}"
 ENVIRONMENT="${UNLEASH_ENVIRONMENT:-development}"
 FEATURES="${FEATURES:-premium-pricing order-notifications bulk-order-discount}"
@@ -16,32 +17,11 @@ FEATURES="${FEATURES:-premium-pricing order-notifications bulk-order-discount}"
 # -------------------------
 sleep 5
 echo "Waiting for Unleash API to be ready..."
-until curl -s "$UNLEASH_URL/health" | grep -q '"health":"GOOD"'; do
+until curl -s "http://unleash-server:4242/health" | grep -q '"health":"GOOD"'; do
     echo "Unleash not ready yet..."
     sleep 2
 done
 echo "Unleash is ready!"
-
-# -------------------------
-# Get or create admin PAT
-# -------------------------
-echo "Checking for existing admin token..."
-ADMIN_TOKEN=$(curl -s -u "$ADMIN_USER:$ADMIN_PASSWORD" \
-    "$UNLEASH_URL/admin/user/tokens" | jq -r '.[] | select(.description=="init-flags token") | .token')
-
-if [ -z "$ADMIN_TOKEN" ] || [ "$ADMIN_TOKEN" = "null" ]; then
-    echo "No existing token found. Creating new admin token..."
-    ADMIN_TOKEN=$(curl -s -X POST "$UNLEASH_URL/admin/user/tokens" \
-        -u "$ADMIN_USER:$ADMIN_PASSWORD" \
-        -H "Content-Type: application/json" \
-        -d '{"description": "init-flags token"}' | jq -r '.token')
-fi
-
-if [ -z "$ADMIN_TOKEN" ] || [ "$ADMIN_TOKEN" = "null" ]; then
-    echo "Failed to create or retrieve admin token!"
-    exit 1
-fi
-
 echo "Admin token ready."
 
 # -------------------------
