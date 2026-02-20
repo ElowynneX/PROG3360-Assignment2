@@ -115,7 +115,7 @@ jobs:
       - name: Run ProductService Feature Flag Unit Tests
         run: |
           echo "Running ProductService Feature Flag Tests..."
-          mvn -f ProductService/pom.xml test -Dtest=org.example.featureflag.FeatureFlagTest -Dsurefire.failIfNoTests=false
+          mvn -f ProductService/pom.xml test -Dtest=org.example.featureflag.FeatureFlagServiceTest -Dsurefire.failIfNoTests=false
 
       - name: Run OrderService Feature Flag Unit Tests
         run: |
