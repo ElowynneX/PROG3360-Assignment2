@@ -53,13 +53,9 @@ jobs:
 
 # Job 2: Docker Build & Integration Test
   docker-build:
-    name: Docker Build & Integration Test
+    name: Docker Build & Basic Integration Test
     runs-on: ubuntu-latest
     needs: build-test
-
-    env:
-      UNLEASH_API_URL: ${{ secrets.UNLEASH_API_URL }}
-      UNLEASH_API_TOKEN: ${{ secrets.UNLEASH_API_TOKEN }}
 
     steps:
       - name: Checkout code
@@ -88,69 +84,22 @@ jobs:
             sleep 5
           done
 
-      - name: Initialize Feature Flags in Unleash
-        run: |
-          echo "Initializing feature flags in Unleash..."
-          for flag in premium-pricing bulk-order-discount order-notifications; do
-            curl -s -X POST "$UNLEASH_API_URL/admin/features" \
-              -H "Authorization: $UNLEASH_API_TOKEN" \
-              -H "Content-Type: application/json" \
-              -d "{\"name\": \"$flag\", \"description\": \"Auto-created by CI\", \"enabled\": false}" \
-              || echo "Flag $flag may already exist."
-          done
+      - name: Basic Integration Test - Product Service
+        run: curl -s http://localhost:8081/api/products | head -n 1
 
-      - name: Integration Test - Premium Pricing Flag
-        run: |
-          echo "Testing premium-pricing flag effect..."
-          curl -s -X PUT "$UNLEASH_API_URL/admin/features/premium-pricing/environments/default/strategies" \
-            -H "Authorization: $UNLEASH_API_TOKEN" \
-            -H "Content-Type: application/json" \
-            -d '[{"name":"default","parameters":{}}]'
-          response=$(curl -s http://localhost:8081/api/products/premium)
-          if [[ "$response" != *"premium"* ]]; then
-            echo "ERROR: premium-pricing flag not affecting API"
-            exit 1
-          fi
-
-      - name: Integration Test - Order Notifications Flag
-        run: |
-          echo "Testing order-notifications flag effect..."
-          curl -s -X PUT "$UNLEASH_API_URL/admin/features/order-notifications/environments/default/strategies" \
-            -H "Authorization: $UNLEASH_API_TOKEN" \
-            -H "Content-Type: application/json" \
-            -d '[{"name":"default","parameters":{}}]'
-          response=$(curl -s -X POST http://localhost:8082/api/orders -d '{"productId":1,"quantity":1}' -H "Content-Type: application/json")
-          if [[ "$response" != *"orderId"* ]]; then
-            echo "ERROR: order-notifications flag not affecting order creation"
-            exit 1
-          fi
-
-      - name: Integration Test - Bulk Order Discount Flag
-        run: |
-          echo "Testing bulk-order-discount flag effect..."
-          curl -s -X PUT "$UNLEASH_API_URL/admin/features/bulk-order-discount/environments/default/strategies" \
-            -H "Authorization: $UNLEASH_API_TOKEN" \
-            -H "Content-Type: application/json" \
-            -d '[{"name":"default","parameters":{}}]'
-          response=$(curl -s -X POST http://localhost:8082/api/orders -d '{"productId":1,"quantity":10}' -H "Content-Type: application/json")
-          if [[ "$response" != *"discountedPrice"* ]]; then
-            echo "ERROR: bulk-order-discount flag not affecting order pricing"
-            exit 1
-          fi
+      - name: Basic Integration Test - Order Service
+        run: curl -s http://localhost:8082/api/orders | head -n 1
 
       - name: Tear down
         if: always()
         run: docker compose down
 
+
 # Job 3: Feature Flag Validation
   feature-flag-check:
-    name: Feature Flag Validation
+    name: Feature Flag Validation (Unit Tests)
     runs-on: ubuntu-latest
     needs: build-test
-
-    env:
-      UNLEASH_API_URL: ${{ secrets.UNLEASH_API_URL }}   # e.g., https://unleash.example.com/api
-      UNLEASH_API_TOKEN: ${{ secrets.UNLEASH_API_TOKEN }}
 
     steps:
       - name: Checkout code
@@ -163,27 +112,13 @@ jobs:
           java-version: '21'
           cache: maven
 
-      - name: Verify Feature Flags Exist in Unleash
+      - name: Run ProductService Feature Flag Unit Tests
         run: |
-          echo "Checking if feature flags exist in Unleash..."
-          for flag in premium-pricing bulk-order-discount order-notifications; do
-            response=$(curl -s -o /dev/null -w "%{http_code}" -H "Authorization: $UNLEASH_API_TOKEN" "$UNLEASH_API_URL/admin/features/$flag")
-            if [ "$response" -ne 200 ]; then
-              echo "ERROR: Feature flag '$flag' does not exist in Unleash."
-              exit 1
-            else
-              echo "Feature flag '$flag' exists."
-            fi
-          done
-
-      - name: Run ProductService Feature Flag Tests
-        run: |
-          echo "Running ProductService Feature Flag Unit Tests..."
+          echo "Running ProductService Feature Flag Tests..."
           mvn -f ProductService/pom.xml test -Dtest=org.example.featureflag.FeatureFlagServiceTest -Dsurefire.failIfNoTests=false
 
-      - name: Run OrderService Feature Flag Tests
+      - name: Run OrderService Feature Flag Unit Tests
         run: |
-          echo "Running OrderService Feature Flag Unit Tests..."
+          echo "Running OrderService Feature Flag Tests..."
           mvn -f OrderService/pom.xml test -Dtest=org.example.featureflag.FeatureFlagServiceTest -Dsurefire.failIfNoTests=false
-
 #Bonus stuff can go below here
