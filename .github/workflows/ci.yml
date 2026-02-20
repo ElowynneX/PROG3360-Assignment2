@@ -10,9 +10,9 @@ name: CI Pipeline
 
 on:
   push:
-    branches: [ "main", "CI-CD-Adjustment" ]
+    branches: [ "main"]
   pull_request:
-    branches: [ "main", "CI-CD-Adjustment" ] 
+    branches: [ "main"] 
 
 #Job 1: Build & Test
 jobs:
